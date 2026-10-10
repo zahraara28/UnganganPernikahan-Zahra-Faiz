@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <!-- Metadata Dasar & Pengaturan Layar Mobile (Anti auto-zoom iOS/Android) -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Undangan Pernikahan</title>
+
+    <!-- STYLING DASAR (CSS) -->
+    <style>
+        /* 1. RESET & PENGATURAN DASAR */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 16px;
+        }
+
+        body {
+            background-image: url('body.webp');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #222222;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        input, select, textarea, button {
+            font-size: 16px;
+        }
+
+        /* 2. STRUKTUR SECTION PER HALAMAN */
+        section {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px 80px 20px;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* Video Background Lokal per Section */
+        .bg-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+            z-index: -2;
+        }
+
+        /* OVERLAY REVISI: Diperpekat agar video background tidak terlalu dominan */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4); /* Gelap transparan untuk meredupkan video */
+            z-index: -1;
+        }
+
+        /* KONTEN REVISI: Dibuat solid (100% tidak transparan) & tambah bayangan */
+        .content {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+            width: 100%;
+            background: #ffffff; /* Warna solid/jelas (tanpa transparansi) */
+            padding: 28px 24px;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); /* Bayangan tegas agar kotak menonjol */
+        }
+
+        /* 3. KOMPONEN ELEMEN UNDANGAN */
+        /* Cover Pembuka (Solid) */
+        #cover {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 999;
+            background: #ffffff;
+            transition: transform 0.8s ease-in-out;
+        }
+
+        #cover.opened {
+            transform: translateY(-100%);
+        }
+
+        /* Elemen Countdown */
+        .countdown-container {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .countdown-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #cccccc;
+            min-width: 65px;
+        }
+
+        .countdown-number {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #111111;
+        }
+
+        .countdown-label {
+            font-size: 0.75rem;
+            color: #555555;
+        }
+
+        /* Form RSVP */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: left;
+        }
+
+        input, select, textarea, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            background-color: #ffffff;
+        }
+
+        button {
+            background-color: #222222;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 12px;
+        }
+
+        button:active {
+            opacity: 0.85;
+        }
+
+        /* 4. MUSIK & NAVIGASI BAWAH */
+        .music-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: #ffffff; /* Solid tidak transparan */
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid #cccccc;
+            display: flex;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            padding: 6px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none;
+        }
+
+        .nav-btn img {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Putar audio latar secara berulang (loop) -->
+<audio id="bg-music" loop>
+    <source src="audio.mp3" type="audio/mpeg">
+</audio>
+
+<!-- Tombol Melayang di Kanan Atas -->
+<button class="music-btn" id="music-toggle" onclick="toggleMusic()" style="position: fixed; top: 20px; right: 20px; z-index: 100; width: 44px; height: 44px; border-radius: 50%; background: #ffffff; border: 1px solid #cccccc; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+    🎵
+</button>
+
+
+    <!-- SECTION 1: COVER -->
+    <!-- STYLING TAMBAHAN KHUSUS COVER (Tambahkan di dalam tag <style>) -->
+<style>
+    /* Mengatur warna dasar teks Cover menjadi Hijau Army */
+    #cover {
+        color: #4B5320; /* Warna Hijau Army */
+    }
+
+    /* Menghilangkan background putih pada kotak konten khusus Cover agar gambar background terlihat utuh */
+    #cover .content {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        padding: 0 20px;
+    }
+
+    /* Pembungkus Nama Tamu tepat di bawah 'Invite you' */
+    .guest-container {
+        margin-top: 210px; /* Menyesuaikan posisi tepat di bawah tulisan 'Invite you' */
+        text-align: center;
+    }
+
+    .guest-container p {
+        font-size: 0.85rem;
+        color: #4B5320;
+        margin-bottom: 4px;
+        font-style: italic;
+    }
+
+    #nama-tamu {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #4B5320; /* Warna Hijau Army */
+        margin-bottom: 20px;
+    }
+
+    /* Tombol Buka Undangan Berbentuk Amplop tepat di bawah 'Wedding' */
+    .btn-envelope {
+        margin-top: 130px; /* Menyesuaikan posisi tepat di bawah tulisan 'Wedding' */
+        background-color: #4B5320; /* Hijau Army */
+        color: #ffffff;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 20px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        transition: transform 0.2s, background-color 0.2s;
+    }
+
+    .btn-envelope:active {
+        transform: scale(0.95);
+        background-color: #3b4219;
+    }
+
+    /* Ikon Amplop SVG */
+    .envelope-icon {
+        width: 20px;
+        height: 20px;
+        fill: currentColor;
+    }
+</style>
+
+<!-- SECTION 1: COVER -->
+    <section id="cover">
+        <head>
+    ...
+    <style>
+        /* PERBAIKAN UKURAN VIDEO BACKGROUND */
+        .bg-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Agar video tampil utuh sesuai proporsi asli */
+            z-index: -2;
+        }
+
+        /* STYLING KHUSUS COVER */
+        #cover {
+            color: #4B5320; /* Warna Hijau Army */
+        }
+
+        #cover .content {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 0 20px;
+        }
+
+        .guest-container {
+            margin-top: 210px; /* Posisi di bawah 'Invite you' */
+            text-align: center;
+        }
+
+        .guest-container p {
+            font-size: 0.85rem;
+            color: #4B5320;
+            margin-bottom: 4px;
+            font-style: italic;
+        }
+
+        #nama-tamu {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #4B5320;
+            margin-bottom: 20px;
+        }
+
+        .btn-envelope {
+            margin-top: 130px; /* Posisi di bawah 'Wedding' */
+            background-color: #4B5320;
+            color: #ffffff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .envelope-icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+        <video class="bg-video" autoplay muted loop playsinline>
+            <source src="1.mp4" type="video/mp4">
+        </video>
+<div class="content">
+    <!-- 1. NAMA TAMU  -->
+    <div class="guest-container" style="margin-top: 320px; text-align: center;">
+        <h2 id="nama-tamu" style="font-size: 1.3rem; font-weight: bold; color: #4B5320; margin-bottom: 0px;">Nama Tamu</h2>
+    </div>
+
+    <!-- 2. TOMBOL BUKA UNDANGAN -->
+   <button class="btn-envelope" onclick="bukaUndangan()" style="margin-top: 160px; width: auto; max-width: 180px; margin-left: auto; margin-right: auto; background-color: #4B5320; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        <!-- Ikon Amplop -->
+        <svg class="envelope-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; flex-shrink: 0;">
+            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+        </svg>
+        <span>Buka Undangan</span>
+    </button>
+</div>
+</section>
+
+
+<!-- SECTION 2: OPENING & COUNTDOWN ACARA -->
+<section id="opening">
+    <!-- Video Background Z2.mp4 -->
+    <video class="bg-video" autoplay muted loop playsinline>
+        <source src="2.mp4" type="video/mp4">
+    </video>
+
+    <!-- Wadah Konten Countdown (Gunakan translateY untuk menggeser posisi turun ke bawah) -->
+    <div class="content" style="transform: translateY(300px); background: transparent !important; border: none !important; box-shadow: none !important;">
+        
+        <!-- Countdown Container -->
+        <div class="countdown-container" id="countdown">
+            <div class="countdown-item"><div class="countdown-number" id="days">00</div><div class="countdown-label">Hari</div></div>
+            <div class="countdown-item"><div class="countdown-number" id="hours">00</div><div class="countdown-label">Jam</div></div>
+            <div class="countdown-item"><div class="countdown-number" id="minutes">00</div><div class="countdown-label">Menit</div></div>
+            <div class="countdown-item"><div class="countdown-number" id="seconds">00</div><div class="countdown-label">Detik</div></div>
+        </div>
+        <p id="event-status" style="font-weight: bold; color: #cc0000;"></p>
+    </div>
+</section>
+
+
+    <!-- SECTION 3: NAMA PENGANTIN -->
+    <section id="pengantin">
+        <video class="bg-video" autoplay muted loop playsinline>
+            <source src="3.mp4" type="video/mp4">
+        </video>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- SECTION 4: INFORMASI ACARA -->
+    <section id="acara">
+        <video class="bg-video" autoplay muted loop playsinline>
+            <source src="4.mp4" type="video/mp4">
+        </video>
+    </section>
+
+
+    <!-- SECTION 5: STORY LINE -->
+    <section id="story1">
+        <video class="bg-video" autoplay muted loop playsinline>
+            <source src="5.mp4" type="video/mp4">
+        </video>
+    </section>
+
+
+    <!-- SECTION 6: STORY LINE 2 -->
+    <section id="story2">
+        <video class="bg-video" autoplay muted loop playsinline>
+            <source src="6.mp4" type="video/mp4">
+        </video>
+    </section>
+
+
+<!-- SECTION 7: RSVP -->
+<section id="rsvp">
+    <video class="bg-video" autoplay muted loop playsinline>
+        <source src="7.mp4" type="video/mp4">
+    </video>
+    <div class="overlay" style="background-color: rgba(0, 0, 0, 0.3);"></div>
+
+    <div class="content" style="background: #F4EFEB; color: #3A4E3A; border: 2px solid #D1C7BD; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25); max-width: 500px; padding: 28px 20px; border-radius: 16px; width: 100%;">
+        <h2 style="font-size: 1.5rem; font-weight: bold; color: #3A4E3A; margin-bottom: 20px; text-align: center;">Konfirmasi Kehadiran (RSVP)</h2>
+        
+        <!-- Form RSVP -->
+        <form id="rsvp-form" style="display: flex; flex-direction: column; gap: 14px; text-align: left;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-weight: 600; font-size: 0.9rem; color: #3A4E3A;">Nama Lengkap:</label>
+                <input type="text" name="nama" id="form-nama" required style="width: 100%; padding: 10px; border: 1.5px solid #8A9A86; border-radius: 8px; background-color: #FAF8F5; color: #3A4E3A; outline: none; font-size: 0.95rem;">
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-weight: 600; font-size: 0.9rem; color: #3A4E3A;">Status Kehadiran:</label>
+                <select name="kehadiran" required style="width: 100%; padding: 10px; border: 1.5px solid #8A9A86; border-radius: 8px; background-color: #FAF8F5; color: #3A4E3A; outline: none; font-size: 0.95rem; cursor: pointer;">
+                    <option value="Hadir">Hadir</option>
+                    <option value="Tidak Hadir">Tidak Hadir</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-weight: 600; font-size: 0.9rem; color: #3A4E3A;">Jumlah Tamu:</label>
+                <input type="number" name="jumlah" value="1" min="1" max="5" style="width: 100%; padding: 10px; border: 1.5px solid #8A9A86; border-radius: 8px; background-color: #FAF8F5; color: #3A4E3A; outline: none; font-size: 0.95rem;">
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-weight: 600; font-size: 0.9rem; color: #3A4E3A;">Pesan / Ucapan:</label>
+                <textarea name="pesan" rows="3" style="width: 100%; padding: 10px; border: 1.5px solid #8A9A86; border-radius: 8px; background-color: #FAF8F5; color: #3A4E3A; outline: none; font-size: 0.95rem; resize: none;"></textarea>
+            </div>
+            
+            <button type="submit" id="btn-submit" style="width: 100%; background-color: #3A4E3A; color: #FFFFFF; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 6px; box-shadow: 0 4px 6px rgba(58, 78, 58, 0.2);">
+                Kirim Konfirmasi
+            </button>
+        </form>
+
+        <!-- WADAH UCAPAN PUBLIK TAMU -->
+        <div style="margin-top: 24px; text-align: left; border-top: 1px dashed #8A9A86; padding-top: 16px;">
+            <h3 style="font-size: 1.1rem; color: #3A4E3A; margin-bottom: 12px; text-align: center;">Ucapan & Doa</h3>
+            <div id="daftar-ucapan" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                <p style="text-align: center; font-size: 0.85rem; color: #666;">Memuat ucapan...</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+    <!-- SECTION 8: GIFT / AMPLOP DIGITAL -->
+    <section id="gift">
+        <video class="bg-video" autoplay muted loop playsinline>
+            <source src="11.mp4" type="video/mp4">
+        </video>
+    </section>
+
+
+    <!-- SECTION 9: PENUTUP -->
+    <section id="penutup">
+        <video class="bg-video" autoplay muted loop playsinline>
+            <source src="9.mp4" type="video/mp4">
+        </video>
+    </section>
+
+
+<!-- NAVIGASI BAWAH TENGAH-->
+<nav class="bottom-nav">
+    <a href="#opening" class="nav-btn" title="Opening">
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: #4B5320;"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+    </a>
+    <a href="#pengantin" class="nav-btn" title="Mempelai">
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: #4B5320;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    </a>
+    <a href="#acara" class="nav-btn" title="Acara">
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: #4B5320;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+    </a>
+    <a href="#rsvp" class="nav-btn" title="RSVP">
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: #4B5320;"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+    </a>
+    <a href="#gift" class="nav-btn" title="Gift">
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: #4B5320;"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.62 0-2.99 1.45-3 3-.01-1.55-1.38-3-3-3-1.66 0-3 1.34-3 3 0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 14H4v-2h16v2zm0-5H4V8h16v5z"/></svg>
+    </a>
+</nav>
+
+
+    <!-- LOGIKA DAN FUNGSI (JAVASCRIPT) -->
+    <script>
+        /* 1. MENGAMBIL NAMA TAMU DARI PARAMETER URL (?to=NamaTamu) */
+        const urlParams = new URLSearchParams(window.location.search);
+        const namaTamu = urlParams.get('to');
+        
+        if (namaTamu) {
+            document.getElementById('nama-tamu').innerText = namaTamu;
+            document.getElementById('form-nama').value = namaTamu;
+        } else {
+            document.getElementById('nama-tamu').innerText = "Tamu Undangan";
+        }
+
+
+        /* 2. BUKA UNDANGAN & KONTROL MUSIK BACKGROUND */
+     const bgMusic = document.getElementById('bg-music');
+let isPlaying = false;
+
+// Dipanggil saat tombol "Buka Undangan" di cover diklik
+function bukaUndangan() {
+    // Sembunyikan cover pembuka
+    document.getElementById('cover').classList.add('opened');
+    
+    // Putar musik
+    playMusic();
+}
+
+function playMusic() {
+    bgMusic.play().then(() => {
+        isPlaying = true;
+        document.getElementById('music-toggle').innerText = "🎵";
+    }).catch(err => {
+        console.log("Autoplay dicegah oleh browser:", err);
+    });
+}
+
+// Fungsi tombol kanan atas untuk Play/Pause musik
+function toggleMusic() {
+    if (isPlaying) {
+        bgMusic.pause();
+        document.getElementById('music-toggle').innerText = "🔇";
+    } else {
+        bgMusic.play();
+        document.getElementById('music-toggle').innerText = "🎵";
+    }
+    isPlaying = !isPlaying;
+}
+
+
+        /* 3. HITUNG MUNDUR / COUNTDOWN ACARA */
+        const eventDate = new Date("2027-01-23T08:00:00").getTime();
+
+        const timer = setInterval(function() {
+            const now = new Date().getTime();
+            const distance = eventDate - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            if (distance > 0) {
+                document.getElementById("days").innerText = String(days).padStart(2, '0');
+                document.getElementById("hours").innerText = String(hours).padStart(2, '0');
+                document.getElementById("minutes").innerText = String(minutes).padStart(2, '0');
+                document.getElementById("seconds").innerText = String(seconds).padStart(2, '0');
+            } else {
+                document.getElementById("days").innerText = "00";
+                document.getElementById("hours").innerText = "00";
+                document.getElementById("minutes").innerText = "00";
+                document.getElementById("seconds").innerText = "00";
+                
+                document.getElementById("event-status").innerText = "Acara telah selesai";
+                clearInterval(timer);
+            }
+        }, 1000);
+
+
+/* 4. KONEKSI RSVP & MENAMPILKAN UCAPAN PUBLIK */
+const scriptURL = 'https://script.google.com/macros/library/d/1ZMg9GnbDAu7n49UjGD4zeNzEBNN9LhNPMophMhPzV0RS9ZJvb-NrA38N/1';
+const form = document.getElementById('rsvp-form');
+const btnSubmit = document.getElementById('btn-submit');
+const daftarUcapan = document.getElementById('daftar-ucapan');
+
+// Memuat daftar ucapan dari Google Sheets
+function muatUcapan() {
+    fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            daftarUcapan.innerHTML = '';
+            if (!data || data.length === 0) {
+                daftarUcapan.innerHTML = '<p style="text-align: center; font-size: 0.85rem; color: #666;">Belum ada ucapan.</p>';
+                return;
+            }
+            data.forEach(item => {
+                if (item.pesan) {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background: #FAF8F5; padding: 10px 12px; border-radius: 8px; border-left: 3px solid #3A4E3A; font-size: 0.85rem;';
+                    card.innerHTML = `
+                        <div style="font-weight: bold; color: #3A4E3A; display: flex; justify-content: space-between;">
+                            <span>${item.nama || 'Tamu'}</span>
+                            <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8;">(${item.kehadiran})</span>
+                        </div>
+                        <p style="margin-top: 4px; color: #4A5E4A;">${item.pesan}</p>
+                    `;
+                    daftarUcapan.appendChild(card);
+                }
+            });
+        })
+        .catch(err => {
+            console.error('Gagal memuat ucapan:', err);
+            daftarUcapan.innerHTML = '<p style="text-align: center; font-size: 0.85rem; color: #666;">Belum ada ucapan terkirim.</p>';
+        });
+}
+
+// Jalankan saat halaman dibuka
+muatUcapan();
+
+// Mengirim Form RSVP
+form.addEventListener('submit', e => {
+    e.preventDefault();
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = "Mengirim...";
+
+    fetch(scriptURL, { method: 'POST', body: new FormData(form) })
+        .then(response => {
+            alert("Terima kasih! Konfirmasi dan ucapan Anda telah terkirim.");
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "Kirim Konfirmasi";
+            form.reset();
+            muatUcapan(); // Refresh ucapan otomatis
+        })
+        .catch(error => {
+            console.error('Error!', error.message);
+            alert("Gagal mengirim konfirmasi. Silakan periksa koneksi internet Anda.");
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "Kirim Konfirmasi";
+        });
+});
+    </script>
+</body>
+</html>
